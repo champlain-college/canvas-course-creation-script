@@ -3,6 +3,7 @@ import canvasapi as ucfcanvas
 import requests
 import logging
 import time
+import csv
 
 canvas = ucfcanvas.Canvas("https://champlain.instructure.com", course_tools.api_key)
 
@@ -71,22 +72,55 @@ def remove_idea_stuff(parent_course_id):
             announcement.delete()
 
 
-default_term_id = course_tools.termid_from_name("Default Term")
+def migrate_every_master_to_parent(master_courses):
+    """Copy all master courses to parent courses and migrate the content
 
-all_master_courses = course_tools.get_course_ids(
-    default_term_id, 14656, has_users=False
-)
-
-
-def migrate_every_master_to_parent():
-    """MIGRATE EVERYTHING. CALL THIS FUNCTION TO MIGRATE
-    ALL MASTER COURSES TO PARENT COURSES AND REMOVE IDEA STUFF."""
+    Args:
+        master_courses (list): List of master course objects from canvasapi
+    Returns: List of parent course ids
+    """
     parent_course_ids = []
-    for course_id in all_master_courses:
+    for course_id in master_courses.ids:
         parent_course_ids.append(convert_course_master_to_parent(course_id))
-    time.sleep(1200)  # pause for 20 minutes for content migrations to complete
+
+    return parent_course_ids
+
+
+def remove_idea_from_all(parent_course_ids):
     for parent_course_id in parent_course_ids:
         remove_idea_stuff(parent_course_id)
+
+
+def generate_spreadsheet(parent_course_ids):
+    """Generate a .csv listing all parent courses
+    Fields for .csv: course_name, course_code, course_id"""
+    with open("parent_courses.csv", "w", newline="") as csvfile:
+        fieldnames = ["course_name", "course_code", "course_id"]
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+
+        writer.writeheader()
+        for parent_course_id in parent_course_ids:
+            parent_course = canvas.get_course(parent_course_id)
+            writer.writerow(
+                {
+                    "course_name": parent_course.name,
+                    "course_code": parent_course.course_code,
+                    "course_id": parent_course_id,
+                }
+            )
+
+
+default_term_id = course_tools.termid_from_name("Default Term")
+master_account_id = 14656
+all_master_courses = canvas.get_account(master_account_id).get_courses()
+
+
+# UNCOMMENT WHEN YOU WANT TO RUN THE WHOLE SCRIPT
+# RUN THE FIRST LINE BY ITSELF THEN A FEW HOURS LATER RUN THE REST
+# new_parent_ids = migrate_every_master_to_parent(all_master_courses)
+# STOP HERE AND WAIT FOR MIGRATIONS TO COMPLETE
+# remove_idea_from_all(new_parent_ids)
+# generate_spreadsheet(new_parent_ids)
 
 
 # Test creation of single master course with content migration
