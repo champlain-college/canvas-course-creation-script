@@ -1,6 +1,6 @@
 import course_tools
 import canvasapi as ucfcanvas
-
+import requests
 
 canvas = ucfcanvas.Canvas("https://champlain.instructure.com", course_tools.api_key)
 
@@ -21,7 +21,18 @@ def convert_course_master_to_parent(course_id: int, parent_subaccount):
     parent_subaccount = canvas.get_account(parent_course_subaccount_id)
     name = master_course.name.replace("MASTER", "PARENT")
     course_code = master_course.course_code.replace("MASTER", "PARENT")
-    parent_subaccount.create_course(name=name, course_code=course_code)
+    # parent_subaccount.create_course(name=name, course_code=course_code)
+    # Create new course
+    new_course_endpoint = f"https://champlain.instructure.com/api/v1/accounts/{parent_subaccount.id}/courses"
+    payload = {
+        "access_token": course_tools.api_key,
+    }
+    response = requests.post(new_course_endpoint, params=payload)
+    response.raise_for_status()
+    new_course_data = response.json()
+    new_course = canvas.get_course(new_course_data["id"])
+    new_course.name = name
+    new_course.update()
 
     """
     # Remove the IDEA stuff
