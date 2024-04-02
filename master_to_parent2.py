@@ -110,6 +110,15 @@ def generate_spreadsheet(parent_course_ids):
             )
 
 
+def read_parent_ids_from_csv():
+    parent_ids = []
+    with open("parent_courses.csv", "r") as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            parent_ids.append(row["course_id"])
+    return parent_ids
+
+
 default_term_id = course_tools.termid_from_name("Default Term")
 master_account_id = 14656
 all_master_courses = canvas.get_account(master_account_id).get_courses()
@@ -118,9 +127,11 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 # UNCOMMENT WHEN YOU WANT TO RUN THE WHOLE SCRIPT
 # RUN THE FIRST LINE BY ITSELF THEN A FEW HOURS LATER RUN THE REST
 # new_parent_ids = migrate_every_master_to_parent(all_master_courses)
-# STOP HERE AND WAIT FOR MIGRATIONS TO COMPLETE
-# remove_idea_from_all(new_parent_ids)
 # generate_spreadsheet(new_parent_ids)
+# STOP HERE AND WAIT FOR MIGRATIONS TO COMPLETE
+# parent_ids = read_parent_ids_from_csv()
+# remove_idea_from_all(new_parent_ids)
+#
 
 
 # Test creation of single master course with content migration
