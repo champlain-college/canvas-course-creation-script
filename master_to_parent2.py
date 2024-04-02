@@ -18,12 +18,27 @@ def convert_course_master_to_parent(course_id: int, parent_subaccount):
     # Get Course
     master_course = canvas.get_course(course_id)
 
-    # Copy Course adjusting dates
+    # Create a new course in the parent subaccount
     parent_subaccount = canvas.get_account(parent_course_subaccount_id)
     name = master_course.name.replace("MASTER", "PARENT")
     course_code = master_course.course_code.replace("MASTER", "PARENT")
     new_course = parent_subaccount.create_course(
         course={"name": name, "course_code": course_code}
+    )
+
+    # Create a content migration
+    migration = new_course.create_content_migration(
+        migration_type="course_copy_importer",
+        settings={
+            "source_course_id": master_course.id,
+            # We don't need to shift dates in this case but will have to in the parent to term copy
+            # For parent to term copy
+            # "date_shift_options": {
+            #    "shift_dates": True,
+            #    "old_start_date": "2024-05-06T00:00:00Z",
+            #    "new_start_date": "2023-01-09T04:00:00Z",
+            # },
+        },
     )
 
     """
