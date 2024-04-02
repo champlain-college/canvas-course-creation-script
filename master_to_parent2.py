@@ -91,8 +91,8 @@ def migrate_every_master_to_parent():
 
 # Test creation of single master course with content migration
 # Migrates the 10th course in the list
-new_parent_course_id = convert_course_master_to_parent(
-    all_master_courses[10], parent_course_subaccount_id
-)
+new_parent_course_id = convert_course_master_to_parent(all_master_courses[10])
+print("pausing for 4 minutes for migration to complete")
+time.sleep(240)
 # Test removal of IDEA stuff
 remove_idea_stuff(new_parent_course_id)
