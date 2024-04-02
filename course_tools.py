@@ -17,7 +17,7 @@ api_key = os.getenv("CANVAS_API_KEY")
 MIN_SYLLABI_LENGTH = 9000  # The minimum length of a syllabus to be considered posted. 2024SP template was ~7500 characters
 
 
-ucfcanvas = Canvas("https://champlain.instructure.com", config.api_key)
+ucfcanvas = Canvas("https://champlain.instructure.com", api_key)
 
 
 def get_course_ids(term_id, account_id=3171, has_users=True):
@@ -28,12 +28,15 @@ def get_course_ids(term_id, account_id=3171, has_users=True):
         account_id (int): The account id. Defaults to 3171 (Champlain Trad on-campus)
     """
     account = ucfcanvas.get_account(account_id)
-    return [
-        course.id
-        for course in account.get_courses(
-            enrollment_term_id=term_id, with_enrollments=has_users
-        )
-    ]
+    if has_users:
+        return [
+            course.id
+            for course in account.get_courses(
+                enrollment_term_id=term_id, with_enrollments=has_users
+            )
+        ]
+    else:
+        return [course.id for course in account.get_courses(enrollment_term_id=term_id)]
 
 
 def termid_from_name(name, root_account_id=283):
