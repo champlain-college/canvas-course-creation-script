@@ -37,8 +37,8 @@ def convert_course_master_to_parent(course_id: int):
             # For parent to term copy
             # "date_shift_options": {
             #    "shift_dates": True,
-            #    "old_start_date": "2024-05-06T00:00:00Z",
-            #    "new_start_date": "2023-01-09T04:00:00Z",
+            #    "old_start_date": "2024-05-06T00:00:00Z", # Correct start date 2024SU
+            #    "new_start_date": "2023-01-01T04:00:00Z", # Modify to start date for new term
             # },
         },
     )
