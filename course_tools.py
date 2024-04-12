@@ -6,16 +6,18 @@ import time
 import requests
 import re
 import io
-
+import configparser
 import os
 from dotenv import load_dotenv
+config = configparser.ConfigParser()
+config.read('/Users/dan-selicaro/Documents/canvas-shells/config/config.ini')
+api_key = config.get('auth', 'token')
 
-load_dotenv()
+# load_dotenv()
 # Using os.getenv
-api_key = os.getenv("CANVAS_API_KEY")
+# api_key = os.getenv("CANVAS_API_KEY")
 
 MIN_SYLLABI_LENGTH = 9000  # The minimum length of a syllabus to be considered posted. 2024SP template was ~7500 characters
-
 
 ucfcanvas = Canvas("https://champlain.instructure.com", api_key)
 

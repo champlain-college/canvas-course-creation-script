@@ -71,6 +71,15 @@ def remove_idea_stuff(parent_course_id):
         if "IDEA" in announcement.title:
             announcement.delete()
 
+    assignment_groups = parent_course.get_assignment_groups()
+    for group in assignment_groups:
+        if "IDEA" in group.name:
+            group.name.replace("IDEA", "VOICE")
+
+    assignments=parent_course.get_assignments()
+    for assignment in assignments:
+        if "IDEA" in assignment.name:
+            assignment.delete()
 
 def migrate_every_master_to_parent(master_courses):
     """Copy all master courses to parent courses and migrate the content
