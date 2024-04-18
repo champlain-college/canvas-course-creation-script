@@ -4,17 +4,21 @@ import requests
 import logging
 import time
 import csv
+from typing import Union
 
 canvas = ucfcanvas.Canvas("https://champlain.instructure.com", course_tools.api_key)
 
 parent_course_subaccount_id = 21181
 
 
-def convert_course_master_to_parent(course_id: int):
+def convert_course_master_to_parent(
+    course_id: Union[int, str], previous_term_name: str = ""
+):
     """Convert a course from master to parent
 
     Args:
         course_id (int): The course id
+        previous_term_name (str): The name of the previous term. If empty dates are not shifted
     Returns: New parent course id
     """
     # Get Course
@@ -29,24 +33,35 @@ def convert_course_master_to_parent(course_id: int):
     )
 
     # Create a content migration
-    migration = parent_course.create_content_migration(
-        migration_type="course_copy_importer",
-        settings={
+    if previous_term_name:
+        # shift the dates to Summer 2024
+        old_term_id = course_tools.termid_from_name(previous_term_name)
+        root_account = canvas.get_account(283)
+        old_term = root_account.get_enrollment_term(old_term_id)
+        course_settings = {
             "source_course_id": master_course.id,
-            # We don't need to shift dates in this case but will have to in the parent to term copy
-            # For parent to term copy
-            # "date_shift_options": {
-            #    "shift_dates": True,
-            #    "old_start_date": "2024-05-06T00:00:00Z", # Correct start date 2024SU
-            #    "new_start_date": "2023-01-01T04:00:00Z", # Modify to start date for new term
-            # },
-        },
+            "date_shift_options": {
+                "shift_dates": True,
+                "old_start_date": old_term.start_at,
+                "new_start_date": "2024-05-06T00:00:00Z",
+            },
+        }
+
+    else:
+        course_settings = {"source_course_id": master_course.id}
+
+    migration = parent_course.create_content_migration(
+        migration_type="course_copy_importer", settings=course_settings
     )
+
+    # Reenroll all people in the previous master course. This time they should all be observers
+    for user in master_course.get_users():
+        parent_course.enroll_user(user.id, enrollment={"type": "ObserverEnrollment"})
 
     return parent_course.id
 
 
-def remove_idea_stuff(parent_course_id):
+def replace_idea_with_voice(parent_course_id):
     """Remove references to IDEA survey from parent course
     It takes quite a while for the content migration to complete,
     so we can't do this until the migration is complete.
@@ -76,10 +91,29 @@ def remove_idea_stuff(parent_course_id):
         if "IDEA" in group.name:
             group.name.replace("IDEA", "VOICE")
 
-    assignments=parent_course.get_assignments()
+    assignments = parent_course.get_assignments()
     for assignment in assignments:
         if "IDEA" in assignment.name:
             assignment.delete()
+
+    # TODO
+    # In the module named “Instructor Resources” search for a page where the name contains “Course Support Materials” and rename that page “Instructors - READ ME”
+    modules = parent_course.get_modules()
+    for module in modules:
+        if "Instructor Resources" in module.name:
+            for module_item in module.get_module_items():
+                if "Course Support Materials" in module_item.title:
+                    module_item.edit(module_item={"title": "Instructors - READ ME"})
+    # In the text of the syllabus, replace the word “IDEA” (all caps) with “VOICE” (all caps)
+    syllabus = parent_course.get_syllabus()
+    if "IDEA" in syllabus:
+        syllabus.replace("IDEA", "VOICE")
+        parent_course.edit(course={"syllabus_body": syllabus})
+    # Create a placeholder assignment “VOICE Course Evaluation”
+    parent_course.create_assignment(
+        assignment={"name": "VOICE Course Evaluation", "published": True}
+    )
+
 
 def migrate_every_master_to_parent(master_courses):
     """Copy all master courses to parent courses and migrate the content
@@ -97,7 +131,7 @@ def migrate_every_master_to_parent(master_courses):
 
 def remove_idea_from_all(parent_course_ids):
     for parent_course_id in parent_course_ids:
-        remove_idea_stuff(parent_course_id)
+        replace_idea_with_voice(parent_course_id)
 
 
 def generate_spreadsheet(parent_course_ids):
@@ -128,6 +162,18 @@ def read_parent_ids_from_csv():
     return parent_ids
 
 
+def migrate_master_to_parent_from_csv(filename):
+    """Reads the course ids and term names from a csv file and migrates the courses to parent courses"""
+    with open(filename, "r") as csvfile:
+        reader = csv.DictReader(csvfile)
+        return [
+            convert_course_master_to_parent(
+                row["course_id"], row["Watermark Project Terms"]
+            )
+            for row in reader
+        ]
+
+
 default_term_id = course_tools.termid_from_name("Default Term")
 master_account_id = 14656
 all_master_courses = canvas.get_account(master_account_id).get_courses()
@@ -135,7 +181,7 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 
 # UNCOMMENT WHEN YOU WANT TO RUN THE WHOLE SCRIPT
 # RUN THE FIRST LINE BY ITSELF THEN A FEW HOURS LATER RUN THE REST
-# new_parent_ids = migrate_every_master_to_parent(all_master_courses)
+# new_parent_ids = migrate_master_to_parent_from_csv("parent_course_list.csv")
 # generate_spreadsheet(new_parent_ids)
 # STOP HERE AND WAIT FOR MIGRATIONS TO COMPLETE
 # parent_ids = read_parent_ids_from_csv()
@@ -145,8 +191,20 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 
 # Test creation of single master course with content migration
 # Migrates the 10th course in the list
-new_parent_course_id = convert_course_master_to_parent(all_master_courses[10])
-print("pausing for 4 minutes for migration to complete")
-time.sleep(240)
+# new_parent_course_id = convert_course_master_to_parent(all_master_courses[10])
+# print("pausing for 4 minutes for migration to complete")
+# time.sleep(240)
 # Test removal of IDEA stuff
-remove_idea_stuff(new_parent_course_id)
+# remove_idea_stuff(new_parent_course_id)
+
+
+# Erase all parent courses from parent sub-account
+"""
+parent_subaccount = canvas.get_account(parent_course_subaccount_id)
+for course in parent_subaccount.get_courses():
+    if "PARENT" in course.name:
+        print(course.name)
+    #    course.delete()
+    else:
+        print(course.name, " - Not a parent course")
+"""
