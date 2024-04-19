@@ -191,11 +191,11 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 
 # Test creation of single master course with content migration
 # Migrates the 10th course in the list
-# new_parent_course_id = convert_course_master_to_parent(all_master_courses[10])
-# print("pausing for 4 minutes for migration to complete")
-# time.sleep(240)
+new_parent_course_id = convert_course_master_to_parent(all_master_courses[10])
+print("pausing for 4 minutes for migration to complete")
+time.sleep(240)
 # Test removal of IDEA stuff
-# remove_idea_stuff(new_parent_course_id)
+replace_idea_with_voice(new_parent_course_id)
 
 
 # Erase all parent courses from parent sub-account
@@ -203,8 +203,9 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 parent_subaccount = canvas.get_account(parent_course_subaccount_id)
 for course in parent_subaccount.get_courses():
     if "PARENT" in course.name:
-        print(course.name)
-    #    course.delete()
+        print("Deleting: ", course.name)
+        course.delete()
+        time.sleep(1)
     else:
         print(course.name, " - Not a parent course")
 """
