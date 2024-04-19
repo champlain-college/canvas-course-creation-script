@@ -32,27 +32,35 @@ def convert_course_master_to_parent(
         course={"name": name, "course_code": course_code}
     )
 
-    # Create a content migration
-    if previous_term_name:
-        # shift the dates to Summer 2024
-        old_term_id = course_tools.termid_from_name(previous_term_name)
-        root_account = canvas.get_account(283)
-        old_term = root_account.get_enrollment_term(old_term_id)
-        course_settings = {
-            "source_course_id": master_course.id,
-            "date_shift_options": {
-                "shift_dates": True,
-                "old_start_date": old_term.start_at,
-                "new_start_date": "2024-05-06T00:00:00Z",
-            },
-        }
+    # shift the dates to Summer 2024
+    old_term_id = course_tools.termid_from_name(previous_term_name)
+    root_account = canvas.get_account(283)
+    old_term = root_account.get_enrollment_term(old_term_id)
+    course_settings = {
+        "source_course_id": master_course.id,
+    }
+    date_shift = {
+        "shift_dates": True,
+        "old_start_date": old_term.start_at,
+        "new_start_date": "2024-05-06T00:00:00Z",
+        "old_end_date": old_term.end_at,
+        "new_end_date": "2024-08-16T00:00:00Z",
+    }
 
-    else:
-        course_settings = {"source_course_id": master_course.id}
-
-    migration = parent_course.create_content_migration(
-        migration_type="course_copy_importer", settings=course_settings
-    )
+    #    migration = parent_course.create_content_migration(
+    #        migration_type="course_copy_importer",
+    #        settings=course_settings,
+    #        date_shift_options=date_shift,
+    #    )
+    url = f"https://champlain.instructure.com/api/v1/courses/{master_course.id}/content_migrations"
+    print(url)
+    payload = {
+        "migration_type": "course_copy_importer",
+        "settings": course_settings,
+        "date_shift_options": date_shift,
+    }
+    headers = {"Authorization": "Bearer {}".format(course_tools.api_key)}
+    result = requests.post(url, headers=headers, params=payload)
 
     # Reenroll all people in the previous master course. This time they should all be observers
     for user in master_course.get_users():
@@ -96,7 +104,6 @@ def replace_idea_with_voice(parent_course_id):
         if "IDEA" in assignment.name:
             assignment.delete()
 
-    # TODO
     # In the module named “Instructor Resources” search for a page where the name contains “Course Support Materials” and rename that page “Instructors - READ ME”
     modules = parent_course.get_modules()
     for module in modules:
@@ -191,11 +198,11 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 
 # Test creation of single master course with content migration
 # Migrates the 10th course in the list
-new_parent_course_id = convert_course_master_to_parent(all_master_courses[10])
-print("pausing for 4 minutes for migration to complete")
-time.sleep(240)
+convert_course_master_to_parent(1912588, "2022FA")
+# print("pausing for 4 minutes for migration to complete")
+# time.sleep(240)
 # Test removal of IDEA stuff
-replace_idea_with_voice(new_parent_course_id)
+# replace_idea_with_voice(new_parent_course_id)
 
 
 # Erase all parent courses from parent sub-account
