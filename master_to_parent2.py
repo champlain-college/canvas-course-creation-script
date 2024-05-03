@@ -47,25 +47,17 @@ def convert_course_master_to_parent(
         "new_end_date": "2024-08-16T00:00:00Z",
     }
 
-    #    migration = parent_course.create_content_migration(
-    #        migration_type="course_copy_importer",
-    #        settings=course_settings,
-    #        date_shift_options=date_shift,
-    #    )
-    url = f"https://champlain.instructure.com/api/v1/courses/{master_course.id}/content_migrations"
-    print(url)
-    payload = {
-        "migration_type": "course_copy_importer",
-        "settings": course_settings,
-        "date_shift_options": date_shift,
-    }
-    headers = {"Authorization": "Bearer {}".format(course_tools.api_key)}
-    result = requests.post(url, headers=headers, params=payload)
+    migration = parent_course.create_content_migration(
+        migration_type="course_copy_importer",
+        settings=course_settings,
+        date_shift_options=date_shift,
+    )
 
     # Reenroll all people in the previous master course. This time they should all be observers
     for user in master_course.get_users():
         parent_course.enroll_user(user.id, enrollment={"type": "ObserverEnrollment"})
 
+    time.sleep(1)
     return parent_course.id
 
 
@@ -75,7 +67,7 @@ def replace_idea_with_voice(parent_course_id):
     so we can't do this until the migration is complete.
     Create and migrate the course first, then run this function.
     """
-    parent_course = canvas.get_course(parent_course_id)
+    parent_course = canvas.get_course(parent_course_id, include=["syllabus_body"])
 
     # Remove the IDEA stuff
     for external_tool in parent_course.get_external_tools():
@@ -94,10 +86,20 @@ def replace_idea_with_voice(parent_course_id):
         if "IDEA" in announcement.title:
             announcement.delete()
 
+    voice_assignment_group = None
     assignment_groups = parent_course.get_assignment_groups()
     for group in assignment_groups:
         if "IDEA" in group.name:
-            group.name.replace("IDEA", "VOICE")
+            group.edit(name=group.name.replace("IDEA", "VOICE"))
+            voice_assignment_group = group
+            break
+        if "VOICE" in group.name:
+            voice_assignment_group = group
+            break
+        if "Course Evaluation" in group.name:
+            group.edit(name="Extra Credit: VOICE Survey")
+            voice_assignment_group = group
+            break
 
     assignments = parent_course.get_assignments()
     for assignment in assignments:
@@ -111,15 +113,28 @@ def replace_idea_with_voice(parent_course_id):
             for module_item in module.get_module_items():
                 if "Course Support Materials" in module_item.title:
                     module_item.edit(module_item={"title": "Instructors - READ ME"})
+
     # In the text of the syllabus, replace the word “IDEA” (all caps) with “VOICE” (all caps)
-    syllabus = parent_course.get_syllabus()
-    if "IDEA" in syllabus:
-        syllabus.replace("IDEA", "VOICE")
-        parent_course.edit(course={"syllabus_body": syllabus})
-    # Create a placeholder assignment “VOICE Course Evaluation”
-    parent_course.create_assignment(
-        assignment={"name": "VOICE Course Evaluation", "published": True}
-    )
+
+    if "IDEA" in parent_course.syllabus_body:
+        parent_course.syllabus_body.replace("IDEA", "VOICE")
+        # parent_course.edit(course={"syllabus_body": syllabus})
+
+    assignments = parent_course.get_assignments()
+    for assignment in assignments:
+        if "VOICE" in assignment.name:
+            break
+    else:
+        if voice_assignment_group:
+            parent_course.create_assignment(
+                assignment={
+                    "name": "VOICE Course Evaluation",
+                    "published": True,
+                    "assignment_group_id": voice_assignment_group.id,
+                }
+            )
+        else:
+            print("MISSING VOICE ASSIGNMENT GROUP FOR ", parent_course.name)
 
 
 def migrate_every_master_to_parent(master_courses):
@@ -175,7 +190,7 @@ def migrate_master_to_parent_from_csv(filename):
         reader = csv.DictReader(csvfile)
         return [
             convert_course_master_to_parent(
-                row["course_id"], row["Watermark Project Terms"]
+                row["CourseID"], row["Watermark Project Terms"]
             )
             for row in reader
         ]
@@ -191,14 +206,14 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 # new_parent_ids = migrate_master_to_parent_from_csv("parent_course_list.csv")
 # generate_spreadsheet(new_parent_ids)
 # STOP HERE AND WAIT FOR MIGRATIONS TO COMPLETE
-# parent_ids = read_parent_ids_from_csv()
-# remove_idea_from_all(new_parent_ids)
+new_parent_ids = read_parent_ids_from_csv()
+remove_idea_from_all(new_parent_ids)
 #
 
 
 # Test creation of single master course with content migration
 # Migrates the 10th course in the list
-convert_course_master_to_parent(1912588, "2022FA")
+# convert_course_master_to_parent(922270, "2018FA")
 # print("pausing for 4 minutes for migration to complete")
 # time.sleep(240)
 # Test removal of IDEA stuff
