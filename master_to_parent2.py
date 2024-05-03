@@ -43,8 +43,8 @@ def convert_course_master_to_parent(
         "shift_dates": True,
         "old_start_date": old_term.start_at,
         "new_start_date": "2024-05-06T00:00:00Z",
-        "old_end_date": old_term.end_at,
-        "new_end_date": "2024-08-16T00:00:00Z",
+        "old_end_date": "",
+        "new_end_date": "",
     }
 
     migration = parent_course.create_content_migration(
@@ -131,6 +131,21 @@ def replace_idea_with_voice(parent_course_id):
 
     for quiz in quizzes:
         if "idea survey quiz" in quiz.title.lower():
+            quiz.edit(quiz={"published": False, "notify_of_update": False})
+            questions = quiz.get_questions()
+            question_count = 0
+            for question in questions:
+                question.edit(
+                    question={
+                        "question_name": "VOICE Question",
+                        "question_text": "<p>Did you complete the VOICE survey?</p>",
+                    }
+                )
+                question_count += 1
+                if question_count > 1:
+                    print(
+                        f"There are too many questions in the quiz! {parent_course.name} Quiz id: {quiz.id}"
+                    )
             quiz.edit(
                 quiz={
                     "title": "Extra Credit: VOICE Survey Quiz",
@@ -141,22 +156,10 @@ def replace_idea_with_voice(parent_course_id):
     <p>STEP 2: Confirm that you have completed the survey by taking this quiz.</p>
     <p>More information about the VOICE Survey or if you experience any technical difficulties, please visit the <a href="https://elearning.champlain.edu/voice-survey-instructions/">CCO VOICE Survey Instructions</a>.</p>
 </div>""",
+                    "published": True,
+                    "notify_of_update": False,
                 }
             )
-            questions = quiz.get_questions()
-            question_count = 0
-            for question in questions:
-                question.edit(
-                    question={
-                        "question_text":"VOICE Question",
-                        "question_name": "<p>Did you complete the VOICE survey?</p>"
-
-                    }
-                    question_count += 1
-                    if question_count > 1:
-                        print(f"There are too many questions in the quiz! {parent_course.name} Quiz id: {quiz.id}")
-                )
-
 
 
 def migrate_every_master_to_parent(master_courses):
@@ -225,8 +228,8 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 
 # UNCOMMENT WHEN YOU WANT TO RUN THE WHOLE SCRIPT
 # RUN THE FIRST LINE BY ITSELF THEN A FEW HOURS LATER RUN THE REST
-new_parent_ids = migrate_master_to_parent_from_csv("parent_course_list.csv")
-generate_spreadsheet(new_parent_ids)
+# new_parent_ids = migrate_master_to_parent_from_csv("parent_course_list.csv")
+# generate_spreadsheet(new_parent_ids)
 # STOP HERE AND WAIT FOR MIGRATIONS TO COMPLETE
 new_parent_ids = read_parent_ids_from_csv()
 remove_idea_from_all(new_parent_ids)
