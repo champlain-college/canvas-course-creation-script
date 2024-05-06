@@ -154,7 +154,7 @@ def replace_idea_with_voice(parent_course_id):
     <p>If you complete a survey for this course, you will be eligible for one point of extra credit on your overall grade. To receive the extra credit, you must perform both of the following steps:</p>
     <p>STEP 1: <a href="/users/self/external_tools/410321">Complete the VOICE survey here</a></p>
     <p>STEP 2: Confirm that you have completed the survey by taking this quiz.</p>
-    <p>More information about the VOICE Survey or if you experience any technical difficulties, please visit the <a href="https://elearning.champlain.edu/voice-survey-instructions/">CCO VOICE Survey Instructions</a>.</p>
+    <p>More information about the VOICE Survey or if you experience any technical difficulties, please visit the <a href="https://elearning.champlain.edu/kb/survey-instructions/">CCO VOICE Survey Instructions</a>.</p>
 </div>""",
                     "published": True,
                     "notify_of_update": False,
