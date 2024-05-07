@@ -6,7 +6,9 @@ import time
 import csv
 from typing import Union
 
-canvas = ucfcanvas.Canvas("https://champlain.instructure.com", course_tools.api_key)
+canvas = ucfcanvas.Canvas(
+    "https://champlain.test.instructure.com", course_tools.api_key
+)
 
 parent_course_subaccount_id = 21181
 
@@ -31,6 +33,37 @@ def convert_course_master_to_parent(
     parent_course = parent_subaccount.create_course(
         course={"name": name, "course_code": course_code}
     )
+    print(f"Created course: {parent_course.name} with id: {parent_course.id}")
+
+    # Create all of the group sets prior to the migration
+    # TODO Create all Group Sets matching the master_course. These group sets need to duplicated prior to migration
+    # in the API these are called "Group Categories" /api/v1/accounts/:account_id/group_categories
+    # We need to:
+    # 1. Create the group categories with matching names
+    # 2. For each group category, create groups with matching names.
+    group_categories = master_course.get_group_categories()
+    for group_category in group_categories:
+        group_category_attributes = {
+            "name": group_category.name,
+            "self_signup": group_category.self_signup,
+            "auto_leader": group_category.auto_leader,
+            "group_limit": group_category.group_limit,
+        }
+        group_category_attributes = {
+            key: value
+            for key, value in group_category_attributes.items()
+            if value is not None
+        }
+        parent_group_category = parent_course.create_group_category(
+            **group_category_attributes
+        )
+
+        groups = group_category.get_groups()
+        for group in groups:
+            group_attributes = {
+                "name": group.name,
+            }
+            parent_group_category.create_group(**group_attributes)
 
     # shift the dates to Summer 2024
     old_term_id = course_tools.termid_from_name(previous_term_name)
@@ -231,14 +264,13 @@ all_master_courses = canvas.get_account(master_account_id).get_courses()
 # new_parent_ids = migrate_master_to_parent_from_csv("parent_course_list.csv")
 # generate_spreadsheet(new_parent_ids)
 # STOP HERE AND WAIT FOR MIGRATIONS TO COMPLETE
-new_parent_ids = read_parent_ids_from_csv()
-remove_idea_from_all(new_parent_ids)
+# new_parent_ids = read_parent_ids_from_csv()
+# remove_idea_from_all(new_parent_ids)
 #
 
 
 # Test creation of single master course with content migration
-# Migrates the 10th course in the list
-# convert_course_master_to_parent(922270, "2018FA")
+convert_course_master_to_parent(1058955, "2019S7A")
 # print("pausing for 4 minutes for migration to complete")
 # time.sleep(240)
 # Test removal of IDEA stuff
