@@ -172,6 +172,8 @@ def replace_idea_with_voice(parent_course_id):
                     question={
                         "question_name": "VOICE Question",
                         "question_text": "<p>Did you complete the VOICE survey?</p>",
+                        "correct_comments": "<p>Thank you for your feedback. Your extra credit will now be added to your grade.</p>",
+                        "incorrect_comments": "<p>Please come back after you have completed the VOICE survey and retake this assessment to receive your extra credit.</p>",
                     }
                 )
                 question_count += 1
